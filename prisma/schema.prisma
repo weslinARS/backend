@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model asignacion {
+  IdAsignacion      Int            @id @default(autoincrement())
+  IdAsignatura      String         @db.VarChar(36)
+  PonderacionMaxima Float          @db.Real
+  NombreAsignacion  String         @db.VarChar(50)
+  TipoAsignacion    String         @db.VarChar(50)
+  FechaAsignacion   DateTime       @default(now()) @db.Date
+  FechaEntrega      DateTime       @db.Date
+  Version           Int            @default(0)
+  FechaMod          DateTime?      @db.Date
+  asignatura        asignatura     @relation(fields: [IdAsignatura], references: [IdAsignatura], onUpdate: Restrict, map: "asignacion_asignatura_relation")
+  calificacion      calificacion[]
+
+  @@index([IdAsignatura], map: "asignacion_asignatura_IdAsignatura_fk")
+}
+
+model asignatura {
+  IdAsignatura String       @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
+  IdCurso      String       @db.VarChar(36)
+  IdProfesor   String       @db.VarChar(36)
+  Nombre       String       @db.VarChar(50)
+  Descripcion  String?
+  asignacion   asignacion[]
+  curso        curso        @relation(fields: [IdCurso], references: [IdCurso], onUpdate: Restrict, map: "asignatura_curso_relation")
+  profesor     profesor     @relation(fields: [IdProfesor], references: [IdProfesor], onUpdate: Restrict, map: "asignatura_profesor_relation")
+  asistencia   asistencia[]
+
+  @@index([IdCurso], map: "asignatura_curso_IdCurso_fk")
+  @@index([IdProfesor], map: "asignatura_profesor_IdProfesor_fk")
+}
+
+model asistencia {
+  IdAsistencia Int        @id @default(autoincrement())
+  IdEstudiante String     @db.VarChar(36)
+  IdAsignatura String     @db.VarChar(36)
+  column_name  Int?
+  Version      Int        @default(0)
+  FechaMod     DateTime?  @db.Date
+  EstaPresente Boolean    @default(false)
+  asignatura   asignatura @relation(fields: [IdAsignatura], references: [IdAsignatura], onUpdate: Restrict, map: "asistencia_asignatura_relation")
+  estudiante   estudiante @relation(fields: [IdEstudiante], references: [IdEstudiante], onUpdate: Restrict, map: "asistencia_estudiante_relation")
+
+  @@index([IdAsignatura], map: "asistencia_asignatura_IdAsignatura_fk")
+  @@index([IdEstudiante], map: "asistencia_estudiante_IdEstudiante_fk")
+}
+
+model calificacion {
+  IdCalificacion  Int        @id @default(autoincrement())
+  IdEstudiante    String     @db.VarChar(36)
+  IdAsignacion    Int
+  Version         Int        @default(0)
+  FechaMod        DateTime?  @db.Date
+  Calificacion    Float      @default(0) @db.Real
+  FechaAgregacion DateTime   @default(now()) @db.Date
+  asignacion      asignacion @relation(fields: [IdAsignacion], references: [IdAsignacion], onUpdate: Restrict, map: "calificacion_asignacion_relation")
+  estudiante      estudiante @relation(fields: [IdEstudiante], references: [IdEstudiante], onUpdate: Restrict, map: "calificacion_estudiante_relation")
+
+  @@index([IdAsignacion], map: "calificacion_asignacion_IdAsignacion_fk")
+  @@index([IdEstudiante], map: "calificacion_estudiante_IdEstudiante_fk")
+}
+
+model credenciales {
+  IdCredenciales     Int     @id @default(autoincrement())
+  CorreoUsuario      String  @db.VarChar(100)
+  ContraseniaUsuario String  @db.VarChar(100)
+  IdUsuario          String  @unique(map: "credenciales_pk") @db.VarChar(36)
+  usuario            usuario @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "credenciales_usuario_relation")
+
+  @@index([IdUsuario], map: "credenciales_usuario_IdUsuario_fk")
+}
+
+model curso {
+  IdCurso          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
+  IdProfesorGuia   String       @db.VarChar(36)
+  NombreCurso      String       @db.VarChar(25)
+  DescripcionCurso String?
+  asignatura       asignatura[]
+  profesor         profesor     @relation(fields: [IdProfesorGuia], references: [IdProfesor], onUpdate: Restrict, map: "curso_profesor_relation")
+  estudiante       estudiante[]
+
+  @@index([IdProfesorGuia], map: "curso_profesor_IdProfesor_fk")
+}
+
+model estudiante {
+  IdEstudiante String         @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
+  IdUsuario    String         @unique(map: "estudiante_pk") @db.VarChar(36)
+  IdCurso      String         @db.VarChar(36)
+  asistencia   asistencia[]
+  calificacion calificacion[]
+  curso        curso          @relation(fields: [IdCurso], references: [IdCurso], onUpdate: Restrict, map: "estudiante_curso_relation")
+  usuario      usuario        @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "estudiante_usuario_relation")
+
+  @@index([IdUsuario], map: "Estudiante_usuario_IdUsuario_fk")
+  @@index([IdCurso], map: "estudiante_curso_IdCurso_fk")
+}
+
+model historialacciones {
+  IdAccion       Int      @id @default(autoincrement())
+  IdUsuario      String   @db.VarChar(36)
+  Accion         String   @db.VarChar(50)
+  FechaEjecucion DateTime @default(now()) @db.Date
+  usuario        usuario  @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "historialAcciones_usuario_relation")
+
+  @@index([IdUsuario], map: "historialAcciones_usuario_IdUsuario_fk")
+}
+
+model profesor {
+  IdProfesor      String       @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
+  IdUsuario       String       @unique(map: "profesor_pk2") @db.VarChar(36)
+  CedulaIdentidad String       @unique(map: "profesor_pk") @db.VarChar(30)
+  asignatura      asignatura[]
+  curso           curso[]
+  usuario         usuario      @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "profesor_usuario_relation")
+
+  @@index([IdUsuario], map: "Profesor_usuario_IdUsuario_fk")
+}
+
+model usuario {
+  IdUsuario         String              @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
+  NombreUsuario     String              @db.VarChar(50)
+  Apellido          String?             @db.VarChar(50)
+  Rol               usuario_Rol
+  CorreoElectronico String              @db.VarChar(100)
+  FechaNacimiento   DateTime            @db.Date
+  Version           Int                 @default(0)
+  FechaModificacion DateTime?           @db.Date
+  genero            usuario_genero
+  Edad              Int                 @default(0)
+  credenciales      credenciales?
+  estudiante        estudiante?
+  historialacciones historialacciones[]
+  profesor          profesor?
+}
+
+enum usuario_Rol {
+  Master
+  Profesor
+  Estudiante
+}
+
+enum usuario_genero {
+  Masculino
+  Femenino
+}

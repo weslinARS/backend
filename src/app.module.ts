@@ -1,19 +1,24 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { MONGODB_URI } from 'config';
-import { AccountModule } from './account/account.module';
+import { JwtModule } from '@nestjs/jwt';
+import { CredencialesUsuarioModule } from './credenciales-usuario/credenciales-usuario.module';
 import { ErrorCatcherMiddleware } from './middlewares/error-catcher/error-catcher.middleware';
-import { UserCredentialsModule } from './user-credentials/user-credentials.module';
-import { ExpenseModule } from './expense/expense.module';
+import { PrismaModule } from './prisma/prisma.module';
+import { PrismaService } from './prisma/prisma.service';
+import { SECRET_KEY } from 'config';
 @Module({
   imports: [
-    MongooseModule.forRoot(MONGODB_URI),
-    UserCredentialsModule,
-    AccountModule,
-    ExpenseModule,
+    PrismaModule,
+    CredencialesUsuarioModule,
+    JwtModule.register({
+      global: true,
+      secret: SECRET_KEY,
+      signOptions: {
+        expiresIn: '3d',
+      },
+    }),
   ],
   controllers: [],
-  providers: [],
+  providers: [PrismaService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
