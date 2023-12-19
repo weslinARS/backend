@@ -8,31 +8,34 @@ datasource db {
 }
 
 model asignacion {
-  IdAsignacion      Int            @id @default(autoincrement())
-  IdAsignatura      String         @db.VarChar(36)
-  PonderacionMaxima Float          @db.Real
-  NombreAsignacion  String         @db.VarChar(50)
-  TipoAsignacion    String         @db.VarChar(50)
-  FechaAsignacion   DateTime       @default(now()) @db.Date
-  FechaEntrega      DateTime       @db.Date
-  Version           Int            @default(0)
-  FechaMod          DateTime?      @db.Date
-  asignatura        asignatura     @relation(fields: [IdAsignatura], references: [IdAsignatura], onUpdate: Restrict, map: "asignacion_asignatura_relation")
+  IdAsignacion      Int                       @id @default(autoincrement())
+  IdAsignatura      String                    @db.VarChar(36)
+  PonderacionMaxima Float                     @db.Real
+  NombreAsignacion  String                    @db.VarChar(50)
+  TipoAsignacion    asignacion_TipoAsignacion
+  FechaAsignacion   DateTime                  @default(now()) @db.Date
+  FechaEntrega      DateTime                  @db.Date
+  Version           Int                       @default(0)
+  FechaMod          DateTime?                 @db.Date
+  asignatura        asignatura                @relation(fields: [IdAsignatura], references: [IdAsignatura], onDelete: Cascade, onUpdate: Restrict, map: "asignacion_asignatura_relation")
   calificacion      calificacion[]
 
   @@index([IdAsignatura], map: "asignacion_asignatura_IdAsignatura_fk")
 }
 
 model asignatura {
-  IdAsignatura String       @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
-  IdCurso      String       @db.VarChar(36)
-  IdProfesor   String       @db.VarChar(36)
-  Nombre       String       @db.VarChar(50)
-  Descripcion  String?
-  asignacion   asignacion[]
-  curso        curso        @relation(fields: [IdCurso], references: [IdCurso], onUpdate: Restrict, map: "asignatura_curso_relation")
-  profesor     profesor     @relation(fields: [IdProfesor], references: [IdProfesor], onUpdate: Restrict, map: "asignatura_profesor_relation")
-  asistencia   asistencia[]
+  IdAsignatura      String       @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
+  IdCurso           String?      @db.VarChar(36)
+  IdProfesor        String       @db.VarChar(36)
+  Nombre            String       @db.VarChar(50)
+  Descripcion       String?
+  estaActivo        Boolean      @default(true)
+  Version           Int          @default(0)
+  FechaModificacion DateTime?    @db.Date
+  asignacion        asignacion[]
+  curso             curso?       @relation(fields: [IdCurso], references: [IdCurso], onDelete: SetDefault, onUpdate: Restrict, map: "asignatura_curso_relation")
+  profesor          profesor     @relation(fields: [IdProfesor], references: [IdProfesor], onDelete: Cascade, onUpdate: Restrict, map: "asignatura_profesor_relation")
+  asistencia        asistencia[]
 
   @@index([IdCurso], map: "asignatura_curso_IdCurso_fk")
   @@index([IdProfesor], map: "asignatura_profesor_IdProfesor_fk")
@@ -42,11 +45,10 @@ model asistencia {
   IdAsistencia Int        @id @default(autoincrement())
   IdEstudiante String     @db.VarChar(36)
   IdAsignatura String     @db.VarChar(36)
-  column_name  Int?
   Version      Int        @default(0)
   FechaMod     DateTime?  @db.Date
   EstaPresente Boolean    @default(false)
-  asignatura   asignatura @relation(fields: [IdAsignatura], references: [IdAsignatura], onUpdate: Restrict, map: "asistencia_asignatura_relation")
+  asignatura   asignatura @relation(fields: [IdAsignatura], references: [IdAsignatura], onDelete: Cascade, onUpdate: Restrict, map: "asistencia_asignatura_relation")
   estudiante   estudiante @relation(fields: [IdEstudiante], references: [IdEstudiante], onUpdate: Restrict, map: "asistencia_estudiante_relation")
 
   @@index([IdAsignatura], map: "asistencia_asignatura_IdAsignatura_fk")
@@ -61,7 +63,7 @@ model calificacion {
   FechaMod        DateTime?  @db.Date
   Calificacion    Float      @default(0) @db.Real
   FechaAgregacion DateTime   @default(now()) @db.Date
-  asignacion      asignacion @relation(fields: [IdAsignacion], references: [IdAsignacion], onUpdate: Restrict, map: "calificacion_asignacion_relation")
+  asignacion      asignacion @relation(fields: [IdAsignacion], references: [IdAsignacion], onDelete: Cascade, onUpdate: Restrict, map: "calificacion_asignacion_relation")
   estudiante      estudiante @relation(fields: [IdEstudiante], references: [IdEstudiante], onUpdate: Restrict, map: "calificacion_estudiante_relation")
 
   @@index([IdAsignacion], map: "calificacion_asignacion_IdAsignacion_fk")
@@ -80,11 +82,13 @@ model credenciales {
 
 model curso {
   IdCurso          String       @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
-  IdProfesorGuia   String       @db.VarChar(36)
+  IdProfesorGuia   String       @default("no_asignado") @db.VarChar(36)
   NombreCurso      String       @db.VarChar(25)
   DescripcionCurso String?
+  FechaMod         DateTime?    @db.Date
+  Version          Int          @default(0)
   asignatura       asignatura[]
-  profesor         profesor     @relation(fields: [IdProfesorGuia], references: [IdProfesor], onUpdate: Restrict, map: "curso_profesor_relation")
+  profesor         profesor     @relation(fields: [IdProfesorGuia], references: [IdProfesor], onDelete: SetDefault, onUpdate: Restrict, map: "curso_profesor_relation")
   estudiante       estudiante[]
 
   @@index([IdProfesorGuia], map: "curso_profesor_IdProfesor_fk")
@@ -93,10 +97,10 @@ model curso {
 model estudiante {
   IdEstudiante String         @id @default(dbgenerated("uuid_generate_v4()")) @db.VarChar(36)
   IdUsuario    String         @unique(map: "estudiante_pk") @db.VarChar(36)
-  IdCurso      String         @db.VarChar(36)
+  IdCurso      String         @default("no_asignado") @db.VarChar(36)
   asistencia   asistencia[]
   calificacion calificacion[]
-  curso        curso          @relation(fields: [IdCurso], references: [IdCurso], onUpdate: Restrict, map: "estudiante_curso_relation")
+  curso        curso          @relation(fields: [IdCurso], references: [IdCurso], onDelete: SetDefault, onUpdate: Restrict, map: "estudiante_curso_relation")
   usuario      usuario        @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "estudiante_usuario_relation")
 
   @@index([IdUsuario], map: "Estudiante_usuario_IdUsuario_fk")
@@ -104,11 +108,13 @@ model estudiante {
 }
 
 model historialacciones {
-  IdAccion       Int      @id @default(autoincrement())
-  IdUsuario      String   @db.VarChar(36)
-  Accion         String   @db.VarChar(50)
-  FechaEjecucion DateTime @default(now()) @db.Date
-  usuario        usuario  @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "historialAcciones_usuario_relation")
+  IdAccion             Int                    @id @default(autoincrement())
+  IdUsuario            String                 @db.VarChar(36)
+  FechaEjecucion       DateTime               @default(now()) @db.Date
+  IdRegistroManipulado String?                @db.VarChar(36)
+  TipoRegistro         historial_TipoRegistro
+  Accion               historial_acciones
+  usuario              usuario                @relation(fields: [IdUsuario], references: [IdUsuario], onUpdate: Restrict, map: "historialAcciones_usuario_relation")
 
   @@index([IdUsuario], map: "historialAcciones_usuario_IdUsuario_fk")
 }
@@ -150,4 +156,34 @@ enum usuario_Rol {
 enum usuario_genero {
   Masculino
   Femenino
+}
+
+enum historial_acciones {
+  Creacion
+  Modificacion
+  Eliminacion
+  Generacion_Reporte
+}
+
+enum historial_TipoRegistro {
+  Asignatura
+  Asistencia
+  Calificacion
+  Curso
+  Estudiante
+  Profesor
+  Usuario
+  Asignacion
+  Credenciales
+}
+
+enum asignacion_TipoAsignacion {
+  Presentacion
+  Examen_Parcial     @map("Examen Parcial")
+  Prueba_en_Linea    @map("Prueba en Linea")
+  Prueba_Escrita     @map("Prueba Escrita")
+  Trabajo_Grupal     @map("Trabajo Grupal")
+  Trabajo_Individual @map("Trabajo Individual")
+  Proyecto
+  Otro
 }

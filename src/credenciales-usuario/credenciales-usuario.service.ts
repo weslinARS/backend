@@ -108,9 +108,11 @@ export class CredencialesUsuarioService {
       throw new BadRequestException('El rol no es valido');
     }
   }
-  async signUp(usuarioInfo: CreateUsuarioDto) {
+  async signUp(usuarioInfo: CreateUsuarioDto, idUsuario: string, rol: string) {
+    if (rol != usuario_Rol.Master)
+      throw new BadRequestException('No tienes permisos para crear usuarios');
     if (!(await this.checkIfUserExists(usuarioInfo.CorreoElectronico))) {
-      const fechaMysql = new Date(usuarioInfo.FechaNacimiento).toISOString();
+      const fechaPostgres = new Date(usuarioInfo.FechaNacimiento).toISOString();
       // !if user does not exist, create user
       // generate salts
       const salt = await bcrypt.genSalt(10);
@@ -128,7 +130,7 @@ export class CredencialesUsuarioService {
             Apellido: usuarioInfo.Apellido,
             Rol: usuarioInfo.Rol,
             genero: usuarioInfo.genero,
-            FechaNacimiento: fechaMysql,
+            FechaNacimiento: fechaPostgres,
             Edad: usuarioInfo.Edad,
             credenciales: {
               create: {
@@ -138,9 +140,11 @@ export class CredencialesUsuarioService {
             },
           },
         });
+        console.log('Rol: ', userCreated.Rol);
         if (userCreated.Rol == usuario_Rol.Master) return userCreated;
         if (userCreated.Rol === usuario_Rol.Estudiante) {
           // !create student
+          console.log(usuarioInfo);
           const estudianteCreado = await this.prisma.estudiante.create({
             data: {
               IdUsuario: userCreated.IdUsuario,
